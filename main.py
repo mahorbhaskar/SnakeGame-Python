@@ -1,96 +1,170 @@
-import pygame
-import time
-import random
+"""
+Snake Eater
+Made with PyGame
+"""
 
-pygame.init()
+import pygame, sys, time, random
 
-#define colors
-white=(255,255,255)
-black=(0,0,0)
-red=(255,0,0)
-orange=(255,165,0)
 
-width,height=600,400
+# Difficulty settings
+# Easy      ->  10
+# Medium    ->  25
+# Hard      ->  40
+# Harder    ->  60
+# Impossible->  120
+difficulty = 5
 
-game_display=pygame.display.set_mode((width,height))
-pygame.display.set_caption("Snake Game")
-clock=pygame.time.Clock()
-snake_size=10
-snake_speed=15
+# Window size
+x = 720
+y = 480
 
-message_font=pygame.font.SysFont('ubuntu',30)
-score_font=pygame.font.SysFont('ubuntu',25)
+# Checks for errors encountered
+check_errors = pygame.init()
+# pygame.init() example output -> (6, 0)
+# second number in tuple gives number of errors
+if check_errors[1] > 0:
+    print(f'[!] Had {check_errors[1]} errors when initialising game, exiting...')
+    sys.exit(-1)
+else:
+    print('[+] Game successfully initialised')
 
-def print_score(score):
-    text=score_font.render("Score: " + str(score),True,orange)
-    game_display.blit(text,[0,0])
-def draw_snake(snake_size,snake_pixels):
-    for pixel in snake_pixels:
-        pygame.draw.rect(game_display,white,[pixel[0],pixel[1],snake_size, snake_size])
 
-def run_game():
-    game_over=False
-    game_close=False
+# Initialise game window
+pygame.display.set_caption('Snake Eater')
+game_window = pygame.display.set_mode((x, y))
 
-    x=width/2
-    y=height/2
 
-    x_speed=0
-    y_speed=0
+# Colors (R, G, B)
+black = pygame.Color(0, 0, 0)
+white = pygame.Color(255, 255, 255)
+red = pygame.Color(255, 0, 0)
+cyan = pygame.Color(0, 255, 255)
+blue = pygame.Color(0, 0, 255)
 
-    snake_pixels=[]
-    snake_length=1
 
-    target_x=round(random.randrange(0,width-snake_size)/10.0)*10.0
-    target_y = round(random.randrange(0, height-snake_size) / 10.0) * 10.0
+# FPS (frames per second) controller
+fps_controller = pygame.time.Clock()
 
-    while not game_over:
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                game_over=True
-            if event.type == pygame.KEYDOWN:
-                if event.type == pygame.K_LEFT:
-                    x_speed = -snake_size
-                    y_speed = 0
-                if event.type == pygame.K_RIGHT:
-                    x_speed = snake_size
-                    y_speed = 0
-                if event.type == pygame.K_UP:
-                    x_speed = 0
-                    y_speed = -snake_size
-                if event.type == pygame.K_DOWN:
-                    x_speed =0
-                    y_speed = snake_size
-        if x >= width or x < 0 or y >= height or y < 0:
-            game_close = True
-        x += x_speed
-        y += y_speed
+# Game variables
+snake_pos = [100, 50]
+snake_body = [[100, 50], [100-10, 50], [100-(2*10), 50]]
 
-        game_display.fill(black)
-        pygame.draw.rect(game_display,orange,[target_x,target_y,snake_size,snake_size])
+food_pos = [random.randrange(1, (x//10)) * 10, random.randrange(1, (y//10)) * 10]
+food_spawn = True
 
-        snake_pixels.append([x,y])
+direction = 'RIGHT'
+change_to = direction
 
-        if len(snake_pixels) > snake_length:
-            del snake_pixels[0]
+score = 0
 
-        for pixel in snake_pixels[:-1]:
-            if pixel == [x,y]:
-                game_close=True
 
-        draw_snake(snake_size,snake_pixels)
-        print_score(snake_length -1)
-
-        pygame.display.update()
-
-        if x == target_x and target_y:
-            target_x = round(random.randrange(0, width - snake_size) / 10.0) * 10.0
-            target_y = round(random.randrange(0, height - snake_size) / 10.0) * 10.0
-            snake_length+=1
-        clock.tick(snake_speed)
-
+# Game Over
+def game_over():
+    my_font = pygame.font.SysFont('times new roman', 90)
+    game_over_surface = my_font.render('YOU DIED', True, red)
+    game_over_rect = game_over_surface.get_rect()
+    game_over_rect.midtop = (x/2, y/4)
+    game_window.fill(black)
+    game_window.blit(game_over_surface, game_over_rect)
+    show_score(0, red, 'times', 20)
+    pygame.display.flip()
+    time.sleep(3)
     pygame.quit()
-    quit()
+    sys.exit()
 
-run_game()
+
+# Score
+def show_score(choice, color, font, size):
+    score_font = pygame.font.SysFont(font, size)
+    score_surface = score_font.render('Score : ' + str(score), True, color)
+    score_rect = score_surface.get_rect()
+    if choice == 1:
+        score_rect.midtop = (x/10, 15)
+    else:
+        score_rect.midtop = (x/2, y/1.25)
+    game_window.blit(score_surface, score_rect)
+    # pygame.display.flip()
+
+
+# Main logic
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        # Whenever a key is pressed down
+        elif event.type == pygame.KEYDOWN:
+            # W -> Up; S -> Down; A -> Left; D -> Right
+            if event.key == pygame.K_UP or event.key == ord('w'):
+                change_to = 'UP'
+            if event.key == pygame.K_DOWN or event.key == ord('s'):
+                change_to = 'DOWN'
+            if event.key == pygame.K_LEFT or event.key == ord('a'):
+                change_to = 'LEFT'
+            if event.key == pygame.K_RIGHT or event.key == ord('d'):
+                change_to = 'RIGHT'
+            # Esc -> Create event to quit the game
+            if event.key == pygame.K_ESCAPE:
+                pygame.event.post(pygame.event.Event(pygame.QUIT))
+
+    # Making sure the snake cannot move in the opposite direction instantaneously
+    if change_to == 'UP' and direction != 'DOWN':
+        direction = 'UP'
+    if change_to == 'DOWN' and direction != 'UP':
+        direction = 'DOWN'
+    if change_to == 'LEFT' and direction != 'RIGHT':
+        direction = 'LEFT'
+    if change_to == 'RIGHT' and direction != 'LEFT':
+        direction = 'RIGHT'
+
+    # Moving the snake
+    if direction == 'UP':
+        snake_pos[1] -= 10
+    if direction == 'DOWN':
+        snake_pos[1] += 10
+    if direction == 'LEFT':
+        snake_pos[0] -= 10
+    if direction == 'RIGHT':
+        snake_pos[0] += 10
+
+    # Snake body growing mechanism
+    snake_body.insert(0, list(snake_pos))
+    if snake_pos[0] == food_pos[0] and snake_pos[1] == food_pos[1]:
+        score += 1
+        food_spawn = False
+    else:
+        snake_body.pop()
+
+    # Spawning food on the screen
+    if not food_spawn:
+        food_pos = [random.randrange(1, (x//10)) * 10, random.randrange(1, (y//10)) * 10]
+    food_spawn = True
+
+    # GFX
+    game_window.fill(black)
+    for pos in snake_body:
+        # Snake body
+        # .draw.rect(play_surface, color, xy-coordinate)
+        # xy-coordinate -> .Rect(x, y, size_x, size_y)
+        pygame.draw.rect(game_window, cyan, pygame.Rect(pos[0], pos[1], 10, 10))
+
+    # Snake food
+    pygame.draw.rect(game_window, white, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
+
+    # Game Over conditions
+    # Getting out of bounds
+    if snake_pos[0] < 0 or snake_pos[0] > x-10:
+        game_over()
+    if snake_pos[1] < 0 or snake_pos[1] > y-10:
+        game_over()
+    # Touching the snake body
+    for block in snake_body[1:]:
+        if snake_pos[0] == block[0] and snake_pos[1] == block[1]:
+            game_over()
+
+    show_score(1, white, 'consolas', 20)
+    # Refresh game screen
+    pygame.display.update()
+    # Refresh rate
+    fps_controller.tick(difficulty)
